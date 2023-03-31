@@ -78,7 +78,9 @@
             customRangeLabel: 'Custom Range',
             daysOfWeek: moment.weekdaysMin(),
             monthNames: moment.monthsShort(),
-            firstDay: moment.localeData().firstDayOfWeek()
+            firstDay: moment.localeData().firstDayOfWeek(),
+            counterDays: 0, //set counter days for tooltip
+            tooltipTemplate:`<div class='tooltip-days'><span class="day"></span></div>` //template for tooltip
         };
 
         this.callback = function() { };
@@ -114,7 +116,7 @@
                     '<button class="cancelBtn" type="button"></button>' +
                     '<button class="applyBtn" disabled="disabled" type="button"></button> ' +
                 '</div>' +
-            '</div>';
+            '</div>'+this.locale.tooltipTemplate; //adding tooltip template
 
         this.parentEl = (options.parentEl && $(options.parentEl).length) ? $(options.parentEl) : $(this.parentEl);
         this.container = $(options.template).appendTo(this.parentEl);
@@ -1257,13 +1259,37 @@
             var row = title.substr(1, 1);
             var col = title.substr(3, 1);
             var cal = $(e.target).parents('.drp-calendar');
-            var date = cal.hasClass('left') ? this.leftCalendar.calendar[row][col] : this.rightCalendar.calendar[row][col];
+            var date = cal.hasClass('left') ? this.leftCalendar.calendar[row][col] : this.rightCalendar.calendar[row][col];var tooltip = $(e.target).parents('.daterangepicker').find(" ~ .tooltip-days").find(".day");//get tooltip html
 
             //highlight the dates between the start date and the date being hovered as a potential end date
             var leftCalendar = this.leftCalendar;
             var rightCalendar = this.rightCalendar;
             var startDate = this.startDate;
             if (!this.endDate) {
+
+                /**
+                 * getting date start date and current date to get difference between days
+                 */
+                var d1 = moment(startDate, this.locale.format);
+                var d2 = moment(date, this.locale.format);
+                this.locale.counterDays =  d2.diff(d1, "days");
+                
+                if( this.locale.counterDays > 0 ) {
+                    tooltip.html(this.locale.counterDays);
+                    var x = e.pageX + 'px',
+                        y = (e.pageY -68) + 'px';
+                        //set tooltip css
+                    tooltip
+                        .css("transform",`translate3d(${x}, ${y}, 0px)` )
+                        .css("display","block")
+                        .css("opacity",1);
+                } else {
+                    tooltip
+                        .css("transform",`translate3d(0, 0, 0px)` )
+                        .css("display","none")
+                        .css("opacity",0);
+                }
+
                 this.container.find('.drp-calendar tbody td').each(function(index, el) {
 
                     //skip week numbers, only look at dates
@@ -1274,6 +1300,7 @@
                     var col = title.substr(3, 1);
                     var cal = $(el).parents('.drp-calendar');
                     var dt = cal.hasClass('left') ? leftCalendar.calendar[row][col] : rightCalendar.calendar[row][col];
+                    
 
                     if ((dt.isAfter(startDate) && dt.isBefore(date)) || dt.isSame(date, 'day')) {
                         $(el).addClass('in-range');
@@ -1289,6 +1316,7 @@
         clickDate: function(e) {
 
             if (!$(e.target).hasClass('available')) return;
+            
 
             var title = $(e.target).attr('data-title');
             var row = title.substr(1, 1);
@@ -1305,6 +1333,16 @@
             // * if one of the inputs above the calendars was focused, cancel that manual input
             //
 
+            //set tooltip html reset
+            this.locale.counterDays = 0;
+            var tooltip = $(e.target).parents('.daterangepicker').find(" ~ .tooltip-days").find(".day");
+            tooltip.html(0);
+            tooltip
+                .css("transform",`translate3d(0, 0, 0px)` )
+                .css("display","none")
+                .css("opacity",0);
+
+                
             if (this.endDate || date.isBefore(this.startDate, 'day')) { //picking start
                 if (this.timePicker) {
                     var hour = parseInt(this.container.find('.left .hourselect').val(), 10);
